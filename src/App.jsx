@@ -1,7 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, StepForward, RotateCcw, Settings2, Calculator, BarChart2, Edit3, Plus, Trash2 } from 'lucide-react';
+import katex from 'katex';
 import 'katex/dist/katex.min.css';
-import { InlineMath, BlockMath } from 'react-katex';
+
+const InlineMath = ({ math }) => {
+  const html = katex.renderToString(math, { throwOnError: false, displayMode: false });
+  return <span dangerouslySetInnerHTML={{ __html: html }} />;
+};
+
+const BlockMath = ({ math }) => {
+  const html = katex.renderToString(math, { throwOnError: false, displayMode: true });
+  return <div dangerouslySetInnerHTML={{ __html: html }} />;
+};
 import { generateProblem, runGreedy, runOptimal, calculateAlpha, generateWorstCaseExample } from './engine/SetCover';
 import './App.css';
 

@@ -8,12 +8,29 @@ function getRandomColor() {
 
 export function generateProblem(numElements = 15, numSets = 8, maxWeight = 10, isWeighted = true) {
   const universe = [];
+  const minDistance = 5; // Minimum % distance between elements
+  
   for (let i = 0; i < numElements; i++) {
-    universe.push({
-      id: i,
-      x: 10 + Math.random() * 80, // percentage based coordinates for easy rendering
-      y: 10 + Math.random() * 80
-    });
+    let x, y;
+    let isValid = false;
+    let attempts = 0;
+    
+    while (!isValid && attempts < 50) {
+      x = 25 + Math.random() * 50; // 25% to 75%
+      y = 25 + Math.random() * 50;
+      
+      isValid = true;
+      for (const el of universe) {
+        const dist = Math.sqrt((el.x - x) ** 2 + (el.y - y) ** 2);
+        if (dist < minDistance) {
+          isValid = false;
+          break;
+        }
+      }
+      attempts++;
+    }
+    
+    universe.push({ id: i, x, y });
   }
 
   const sets = [];
@@ -21,12 +38,18 @@ export function generateProblem(numElements = 15, numSets = 8, maxWeight = 10, i
     const numElementsInSet = Math.floor(Math.random() * (numElements / 2)) + 2; // 2 to N/2 elements
     const elements = [];
     
-    // Randomly pick elements for this set
-    const tempUniverse = [...universe];
+    // Pick a random center for this set to keep elements localized
+    const setCenterX = 25 + Math.random() * 50;
+    const setCenterY = 25 + Math.random() * 50;
+    
+    // Sort all available elements by distance to the set center
+    const tempUniverse = [...universe].map(e => ({
+      ...e,
+      dist: Math.sqrt((e.x - setCenterX) ** 2 + (e.y - setCenterY) ** 2)
+    })).sort((a, b) => a.dist - b.dist);
+    
     for (let j = 0; j < numElementsInSet && tempUniverse.length > 0; j++) {
-      const idx = Math.floor(Math.random() * tempUniverse.length);
-      elements.push(tempUniverse[idx].id);
-      tempUniverse.splice(idx, 1);
+      elements.push(tempUniverse[j].id);
     }
     
     sets.push({
@@ -211,7 +234,7 @@ export function generateWorstCaseExample(n = 6) {
   // Arrange elements in a neat circle for the worst case to look pretty
   const centerX = 50;
   const centerY = 50;
-  const radius = 35;
+  const radius = 25;
   for (let i = 1; i <= n; i++) {
     const angle = (i / n) * 2 * Math.PI - Math.PI / 2;
     universe.push({

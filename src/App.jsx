@@ -21,16 +21,35 @@ const SetVisualizer = ({ universe, sets, selectedSetIds, coveredElementsIds, tit
           const elementsInfo = universe.filter(e => set.elements.includes(e.id));
           if (elementsInfo.length === 0) return null;
           
-          const minX = Math.min(...elementsInfo.map(e => e.x));
-          const maxX = Math.max(...elementsInfo.map(e => e.x));
-          const minY = Math.min(...elementsInfo.map(e => e.y));
-          const maxY = Math.max(...elementsInfo.map(e => e.y));
-          
-          // Add stagger to padding and rotation to prevent perfect overlaps
-          const padding = 10 + (idx % 4) * 3;
           const rotate = (idx % 5) * 4 - 8;
-          const width = maxX - minX + padding * 2;
-          const height = maxY - minY + padding * 2;
+          const theta = rotate * Math.PI / 180;
+          const cos = Math.cos(theta);
+          const sin = Math.sin(theta);
+          
+          let minU = Infinity, maxU = -Infinity;
+          let minV = Infinity, maxV = -Infinity;
+          
+          elementsInfo.forEach(e => {
+            const u = e.x * cos + e.y * sin;
+            const v = -e.x * sin + e.y * cos;
+            if (u < minU) minU = u;
+            if (u > maxU) maxU = u;
+            if (v < minV) minV = v;
+            if (v > maxV) maxV = v;
+          });
+          
+          const padding = 12 + (idx % 4) * 3;
+          const width = maxU - minU + padding * 2;
+          const height = maxV - minV + padding * 2;
+          
+          const cu = (minU + maxU) / 2;
+          const cv = (minV + maxV) / 2;
+          
+          const cx = cu * cos - cv * sin;
+          const cy = cu * sin + cv * cos;
+          
+          const left = cx - width / 2;
+          const top = cy - height / 2;
           
           // Glow effect for selected sets
           const boxShadow = isSelected ? `0 0 25px ${set.color.replace('hsl', 'hsla').replace(')', ', 0.6)')}` : 'none';
@@ -40,8 +59,8 @@ const SetVisualizer = ({ universe, sets, selectedSetIds, coveredElementsIds, tit
               key={set.id}
               className={`set-hull ${isSelected ? 'active' : 'inactive'}`}
               style={{
-                left: `${minX - padding}%`,
-                top: `${minY - padding}%`,
+                left: `${left}%`,
+                top: `${top}%`,
                 width: `${width}%`,
                 height: `${height}%`,
                 borderColor: set.color,
@@ -50,7 +69,7 @@ const SetVisualizer = ({ universe, sets, selectedSetIds, coveredElementsIds, tit
                 boxShadow: boxShadow
               }}
             >
-              <span className="set-label">{set.name}</span>
+              <span className="set-label" style={{ top: '-24px', left: 0, transform: 'none' }}>{set.name}</span>
             </div>
           );
         })}
@@ -229,12 +248,12 @@ function App() {
     <div className="app-container">
       <header className="header">
         <h1>Greedy Set Cover</h1>
-        <p>Interactive Simulation & <InlineMath math="\alpha" />-Approximation Analysis</p>
+        <p>Interactive Simulation & <InlineMath math={"\\alpha"} />-Approximation Analysis</p>
       </header>
 
-      <div className="main-grid" style={{ gridTemplateColumns: '1fr' }}>
+      <div className="main-grid">
         {/* Top Control Panel */}
-        <div className="glass-panel" style={{ marginBottom: '2rem' }}>
+        <div className="glass-panel" style={{ marginBottom: '2rem', gridColumn: '1 / -1' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
             <div className="toggle-wrapper" style={{ margin: 0 }}>
               <div className={`toggle-option ${mode === 'simulate' ? 'active' : ''}`} onClick={() => setMode('simulate')}>
@@ -248,7 +267,7 @@ function App() {
             {mode === 'simulate' && (
               <div style={{ display: 'flex', gap: '1rem' }}>
                 <button className="btn btn-secondary" onClick={handleLoadWorstCase}>
-                  Load Worst Case Example (<InlineMath math="\alpha \to H_n" />)
+                  Load Worst Case Example (<InlineMath math={"\\alpha \\to H_n"} />)
                 </button>
                 <button className="btn btn-primary" onClick={handleGenerate} disabled={isCalculatingOpt}>
                   <RotateCcw size={18} /> {isCalculatingOpt ? "Calculating..." : "Random Generation"}
@@ -347,8 +366,8 @@ function App() {
                 </div>
               </div>
 
-              <div style={{ display: 'flex', gap: '2rem' }}>
-                <div style={{ flex: '1 1 70%' }}>
+              <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                <div style={{ flex: '1 1 60%', minWidth: '300px' }}>
                   <SetVisualizer 
                     title={currentStep === 0 ? "Initial State" : `Greedy Step ${currentStep}/${greedySteps.length-1}`}
                     cost={stepData.totalCost}
@@ -359,7 +378,7 @@ function App() {
                     coveredElementsIds={greedyCoveredElements}
                   />
                 </div>
-                <div style={{ flex: '1 1 30%', minWidth: '250px' }}>
+                <div style={{ flex: '1 1 35%', minWidth: '250px' }}>
                   <h3>Candidate Evaluation</h3>
                   <div className="set-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
                     {stepData.candidates && stepData.candidates.map((c, idx) => {
@@ -410,7 +429,7 @@ function App() {
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', gap: '2rem' }}>
+                <div style={{ display: 'flex', gap: '2rem', alignItems: 'flex-start' }}>
                   <div style={{ flex: '1 1 100%' }}>
                     <SetVisualizer 
                       title={currentOptStep === 0 ? "Initial State" : (currentOptStep === optimalSteps.length - 1 ? "Exact Global Minimum Cost" : `Optimal Step ${currentOptStep}/${optimalSteps.length - 1}`)}
@@ -458,10 +477,10 @@ function App() {
             </div>
 
             <div className="derivation-card">
-              <h4>Theoretical Bound (<InlineMath math="\alpha" />)</h4>
+              <h4>Theoretical Bound (<InlineMath math={"\\alpha"} />)</h4>
               <p style={{marginBottom: '1rem', color: 'var(--text-muted)'}}>
-                The greedy algorithm guarantees a solution cost bounded by an <InlineMath math="\alpha" /> factor times the optimal cost. 
-                For Set Cover, <InlineMath math="\alpha" /> is the Harmonic Number of the maximum set size.
+                The greedy algorithm guarantees a solution cost bounded by an <InlineMath math={"\\alpha"} /> factor times the optimal cost. 
+                For Set Cover, <InlineMath math={"\\alpha"} /> is the Harmonic Number of the maximum set size.
               </p>
               <ul style={{ lineHeight: '2' }}>
                 <li>Max Set Size (<InlineMath math="|S|_{max}" />) = <strong>{alphaData.maxSetSize}</strong></li>
@@ -492,7 +511,7 @@ function App() {
 
           {stepData.totalCost <= (alphaData.alpha * optimalData.optimalCost) + 0.01 ? (
             <div className="final-verdict">
-              <strong>Theorem Verified!</strong> The greedy algorithm produced a valid cover within the theoretical <InlineMath math="\alpha" />-approximation bound.
+              <strong>Theorem Verified!</strong> The greedy algorithm produced a valid cover within the theoretical <InlineMath math={"\\alpha"} />-approximation bound.
             </div>
           ) : (
             <div className="final-verdict failed">
@@ -503,7 +522,7 @@ function App() {
           <div className="derivation-card" style={{ marginTop: '2rem', gridColumn: '1 / -1' }}>
             <h4>Worst-Case Scenario</h4>
             <p style={{ color: 'var(--text-muted)' }}>
-              The ratio we computed empirically is almost always strictly less than the theoretical <InlineMath math="\alpha" />.
+              The ratio we computed empirically is almost always strictly less than the theoretical <InlineMath math={"\\alpha"} />.
               To reach the worst case, we must construct a specific adversarial graph where the greedy algorithm is repeatedly tricked into choosing sets that are only slightly more "cost-effective" at the moment, but terrible in the long run.
             </p>
             <p style={{ color: 'var(--text-muted)', marginTop: '0.5rem' }}>
